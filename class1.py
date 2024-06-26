@@ -33,54 +33,7 @@ ax2 = sns.lmplot(data=experiment, x='Chocolate',y='Porcoes', ci=None, hue='Farin
 ax2.set(xticks=(-1,1))
 plt.show()
 
-##===============================================================
-## Models V1
-model = smf.ols(data=experiment, formula='Porcoes ~ Farinha + Chocolate + Farinha:Chocolate')
-adjusted_model = model.fit()
-print(adjusted_model.summary())
-
-distribution_t = stats.t(df=4)
-name = adjusted_model.tvalues.index.tolist()
-limit = [distribution_t.ppf(q=1-0.025)] * len(name)
-
-pareto = sns.barplot(x=adjusted_model.tvalues, y=name)
-pareto.figure.set_size_inches(15,6)
-pareto.tick_params(labelsize=20)
-pareto.set_xlabel('t-values', fontsize=20)
-pareto.plot(limit, name ,'r')
-plt.show()
-
-##===============================================================
-## Models V2
-model_v2 = smf.ols(data=experiment, formula='Porcoes ~ Farinha + Chocolate')
-adjusted_model_v2 = model_v2.fit()
-print(adjusted_model_v2.summary())
-
-distribution_t = stats.t(df=5)
-name = adjusted_model_v2.tvalues.index.tolist()
-limit = [distribution_t.ppf(q=1-0.025)] * len(name)
-
-pareto = sns.barplot(x=adjusted_model_v2.tvalues, y=name)
-pareto.figure.set_size_inches(15,6)
-pareto.tick_params(labelsize=20)
-pareto.set_xlabel('t-values', fontsize=20)
-pareto.plot(limit, name ,'r')
-plt.show()
-
-y = experiment['Porcoes']
-predict_y = adjusted_model_v2.predict()
-
-plt.figure(figsize=(10,5))
-plt.xlabel('Predict', fontsize=16)
-plt.ylabel('Y', fontsize=16)
-x_guide_line = np.linspace(start=15, stop=50, num=10)
-y_guide_line = np.linspace(start=15, stop=50, num=10)
-plt.plot(x_guide_line,y_guide_line,'r')
-plt.scatter(predict_y, y)
-
-params = adjusted_model_v2.params
-
-def model_recipe(x_f, x_c):
+def model_recipe(x_f, x_c, params):
     #limit
     limit_normalize = [-1,1]
     limit_farinha = [0.5,1.5]
@@ -94,27 +47,68 @@ def model_recipe(x_f, x_c):
 
     return round(porcoes)
 
-print(model_recipe(0.5,0.1))
+def generate_model(equation):
+    model = smf.ols(data=experiment, formula=equation)
+    adjusted_model = model.fit()
+    print(adjusted_model.summary())
 
-x_farinha = np.linspace(start=0.5, stop=1.5, num=10)
-x_chocolate = np.linspace(start=0.1, stop=0.5, num=10)
+    distribution_t = stats.t(df=adjusted_model.df_model)
+    name = adjusted_model.tvalues.index.tolist()
+    limit = [distribution_t.ppf(q=1-0.025)] * len(name)
 
-dots = []
+    pareto = sns.barplot(x=adjusted_model.tvalues, y=name)
+    pareto.figure.set_size_inches(15,6)
+    pareto.tick_params(labelsize=20)
+    pareto.set_xlabel('t-values', fontsize=20)
+    pareto.plot(limit, name ,'r')
+    plt.show()
 
-for cont1 in x_farinha:
-    temp = []
+    y = experiment['Porcoes']
+    predict_y = adjusted_model.predict()
 
-    for cont2 in x_chocolate:
-        temp.append(model_recipe(cont1,cont2))
+    #Scatter
+    plt.figure(figsize=(10,5))
+    plt.xlabel('Predict', fontsize=16)
+    plt.ylabel('Y', fontsize=16)
+    x_guide_line = np.linspace(start=15, stop=50, num=10)
+    y_guide_line = np.linspace(start=15, stop=50, num=10)
+    plt.plot(x_guide_line,y_guide_line,'r')
+    plt.scatter(predict_y, y)
+    plt.show()
 
-    dots.append(temp)
+    params = adjusted_model.params
 
-plt.figure(figsize=(16,6))
-plt.xlabel('Farinha (kg)', fontsize=16)
-plt.ylabel('Chocolate (kg)', fontsize=16)
+    print(model_recipe(0.5,0.1,params))
 
-color_map = plt.imshow(dots, origin='lower', cmap=cm.rainbow, interpolation='quadric',extent=(0.5,1.5,0.1,0.5))
-plt.colorbar().set_label('Porcoes',fontsize=16)
-lines = plt.contour(x_farinha,x_chocolate,dots,colors='k',linewidhts=1.5)
-plt.clabel(lines,inline=True,fontsize=15,inline_spacing=10,fmt='%1.0f')
-plt.show()
+    x_farinha = np.linspace(start=0.5, stop=1.5, num=10)
+    x_chocolate = np.linspace(start=0.1, stop=0.5, num=10)
+
+    dots = []
+
+    for cont1 in x_farinha:
+        temp = []
+
+        for cont2 in x_chocolate:
+            temp.append(model_recipe(cont1,cont2))
+
+        dots.append(temp)
+
+    #Color Map
+    plt.figure(figsize=(16,6))
+    plt.xlabel('Farinha (kg)', fontsize=16)
+    plt.ylabel('Chocolate (kg)', fontsize=16)
+    plt.imshow(dots, origin='lower', cmap=cm.rainbow, interpolation='quadric',extent=(0.5,1.5,0.1,0.5))
+    plt.colorbar().set_label('Porcoes',fontsize=16)
+    lines = plt.contour(x_farinha,x_chocolate,dots,colors='k',linewidhts=1.5)
+    plt.clabel(lines,inline=True,fontsize=15,inline_spacing=10,fmt='%1.0f')
+    plt.show()
+
+
+##===============================================================
+## Models V1
+equation = 'Porcoes ~ Farinha + Chocolate + Farinha:Chocolate'
+model = generate_model(equation)
+
+## Models V2
+equation = 'Porcoes ~ Farinha + Chocolate'
+model = generate_model(equation)
